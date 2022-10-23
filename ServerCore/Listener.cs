@@ -1,7 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 
-namespace Server;
+namespace ServerCore;
 
 public class Listener
 {
