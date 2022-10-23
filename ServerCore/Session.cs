@@ -9,32 +9,39 @@ public class Session
     private int _disconnected = 0;
 
     private object _lock = new object();
-    
     private Queue<byte[]> _sendQueue = new Queue<byte[]>();
+    
     SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
-    private bool _pending = false;
+    SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
+    
+    List<ArraySegment<byte>> _pendingList = new List<ArraySegment<byte>>();
     
     public void Start(Socket socket)
     {
         this._socket = socket;
         
-        SocketAsyncEventArgs recvArgs = new SocketAsyncEventArgs();
-        recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
+        _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
+        _recvArgs.SetBuffer(new byte[1024], 0, 1024);
         // recvArgs.UserToken = 1; // 필요한 데이터 전달 가능.
-        recvArgs.SetBuffer(new byte[1024], 0, 1024);
-        RegisterRecv(recvArgs);
+        RegisterRecv();
         
         _sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnSendCompleted);
     }
     
     // Send는 Recv에 비해서 까다로움
     // 호출 시점이 언제가 될지 모르기 때문에
+    
+    // 개선점 :
+    // - 패킷을 무조건 보내기 보다는 응답이 오지 않으면 패킷을 보내지 않고 대기 하는 등의 처리가 필요함
+    //     클라를 해킹해서 악의적으로 서버에게 계속 보내는 경우...
+    // - 패킷을 모아 보내기 작은 패킷을 여러개 보내기 보다, 큰 버퍼에 모아서 보내는 것 필요
+    //    이러한 최적화는 server core에서도 할수 있으나 게임 컨텐츠단에서도 가능하다.
     public void Send(byte[] sendBuff)
     {
         lock (_lock)
         {
             _sendQueue.Enqueue(sendBuff);
-            if (_pending == false)
+            if (_pendingList.Count == 0)
             {
                 RegisterSend();
             }
@@ -57,9 +64,16 @@ public class Session
 
     void RegisterSend()
     {
-        _pending = true;
-        byte[] buff = _sendQueue.Dequeue();
-        _sendArgs.SetBuffer(buff, 0, buff.Length);
+        // BufferList, SetBuffer 둘다 세팅하면 에러남
+        // byte[] buff = _sendQueue.Dequeue();
+        //_sendArgs.SetBuffer(buff, 0, buff.Length);
+        
+        while (_sendQueue.Count > 0)
+        {
+            byte[] buff = _sendQueue.Dequeue();
+            _pendingList.Add(new ArraySegment<byte>(buff, 0, buff.Length));
+        }
+        _sendArgs.BufferList = _pendingList;
         
         bool pending = _socket.SendAsync(_sendArgs);
         if (pending == false)
@@ -78,14 +92,15 @@ public class Session
             {
                 try
                 {
-                    // OnSendCompleted 비동기로 수행되는 경우, 그 동안에 다른 스레드에 의해 sendqueue에 일감이 있을 수 있으므로
+                    _sendArgs.BufferList = null;
+                    _pendingList.Clear();
+
+                    Console.WriteLine($"Transferred bytes : {_sendArgs.BytesTransferred}");
+                    
+                    // OnSendCompleted 비동기로 수행되는 경우, 그 동안에 다른 스레드에 의해 sendQueue에 일감이 있을 수 있으므로
                     if (_sendQueue.Count > 0)
                     {
                         RegisterSend();
-                    }
-                    else
-                    {
-                        _pending = false;
                     }
                 }
                 catch (Exception e)
@@ -100,12 +115,12 @@ public class Session
         }
     }
 
-    void RegisterRecv(SocketAsyncEventArgs args)
+    void RegisterRecv()
     {
-        bool pending = _socket.ReceiveAsync(args);
+        bool pending = _socket.ReceiveAsync(_recvArgs);
         if (pending == false)
         {
-            OnRecvCompleted(null, args);
+            OnRecvCompleted(null, _recvArgs);
         }
     }
     
@@ -119,13 +134,12 @@ public class Session
             {
                 string recvData = Encoding.UTF8.GetString(args.Buffer, args.Offset, args.BytesTransferred);
                 Console.WriteLine($"[From Client] {recvData}");
-                RegisterRecv(args);
+                RegisterRecv();
             }
             catch (Exception e)
             {
                 Console.WriteLine($"OnRecvCompleted Failed{e}");
             }
-            
         }
         else
         {
