@@ -24,8 +24,8 @@ class GameSession : Session
         {
             byte[] sendBuff = Encoding.UTF8.GetBytes("Welcome to Server");
             Send(sendBuff);
-            Thread.Sleep(1000);
-            Disconnect();
+            // Thread.Sleep(1000);
+            // Disconnect();
         }
         catch (Exception e)
         {
@@ -33,10 +33,12 @@ class GameSession : Session
         }
     }
 
-    public override void OnRecv(ArraySegment<byte> buffer)
+    public override int OnRecv(ArraySegment<byte> buffer)
     {
         string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
         Console.WriteLine($"[From Client] {recvData}");
+
+        return buffer.Count;
     }
 
     public override void OnSend(int numOfBytes)
