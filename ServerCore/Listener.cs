@@ -6,12 +6,12 @@ namespace Server;
 public class Listener
 {
     private Socket _listenSocket;
-    private Action<Socket> _onAcceptHandler;
+    private Func<Session> _sessionFactory;
 
-    public void Init(IPEndPoint endPoint, Action<Socket> onAcceptHandler)
+    public void Init(IPEndPoint endPoint, Func<Session> sessionFactory)
     {
         _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        _onAcceptHandler = onAcceptHandler;
+        _sessionFactory = sessionFactory;
         
         _listenSocket.Bind(endPoint);
         _listenSocket.Listen(10);
@@ -40,7 +40,11 @@ public class Listener
     {
         if (args.SocketError == SocketError.Success)
         {
-            _onAcceptHandler.Invoke(args.AcceptSocket);
+            Session session = _sessionFactory();
+            session.Start(args.AcceptSocket);
+            
+            // todo :여기서 클라가 접속을 끊으면 AcceptSocket에 접근이 불가능.. 크래쉬 여지 있음. 조치 필요
+            session.OnConnected(args.AcceptSocket.RemoteEndPoint);
         }
         else
         {

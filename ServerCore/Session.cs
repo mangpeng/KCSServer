@@ -1,9 +1,10 @@
-﻿using System.Net.Sockets;
+﻿using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace Server;
 
-public class Session
+public abstract class Session
 {
     private Socket _socket;
     private int _disconnected = 0;
@@ -15,6 +16,12 @@ public class Session
     SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
     
     List<ArraySegment<byte>> _pendingList = new List<ArraySegment<byte>>();
+    
+    public abstract void OnConnected(EndPoint endPoint);
+    public abstract void OnRecv(ArraySegment<byte> buffer);
+    public abstract void OnSend(int numOfBytes);
+    public abstract void OnDisconnected(EndPoint endPoint);
+    
     
     public void Start(Socket socket)
     {
@@ -55,6 +62,8 @@ public class Session
         {
             return;
         }
+
+        OnDisconnected(_socket.RemoteEndPoint);
         
         _socket.Shutdown(SocketShutdown.Both);
         _socket.Close();
@@ -95,8 +104,8 @@ public class Session
                     _sendArgs.BufferList = null;
                     _pendingList.Clear();
 
-                    Console.WriteLine($"Transferred bytes : {_sendArgs.BytesTransferred}");
-                    
+                    OnSend(_sendArgs.BytesTransferred);
+
                     // OnSendCompleted 비동기로 수행되는 경우, 그 동안에 다른 스레드에 의해 sendQueue에 일감이 있을 수 있으므로
                     if (_sendQueue.Count > 0)
                     {
@@ -132,8 +141,7 @@ public class Session
         {
             try
             {
-                string recvData = Encoding.UTF8.GetString(args.Buffer, args.Offset, args.BytesTransferred);
-                Console.WriteLine($"[From Client] {recvData}");
+                OnRecv(new ArraySegment<byte>(args.Buffer, args.Offset, args.BytesTransferred));
                 RegisterRecv();
             }
             catch (Exception e)
@@ -146,7 +154,5 @@ public class Session
             Disconnect();
         }
     }
-
     #endregion
- 
 }
