@@ -4,6 +4,8 @@ using System.Text;
 
 namespace ServerCore;
 
+
+
 public abstract class Session
 {
     private Socket _socket;
@@ -12,7 +14,7 @@ public abstract class Session
     private RecvBuffer _recvBuffer = new RecvBuffer(1024);
 
     private object _lock = new object();
-    private Queue<byte[]> _sendQueue = new Queue<byte[]>();
+    private Queue<ArraySegment<byte>> _sendQueue = new Queue<ArraySegment<byte>>();
     
     SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
     SocketAsyncEventArgs _recvArgs = new SocketAsyncEventArgs();
@@ -43,7 +45,7 @@ public abstract class Session
     //     클라를 해킹해서 악의적으로 서버에게 계속 보내는 경우...
     // - 패킷을 모아 보내기 작은 패킷을 여러개 보내기 보다, 큰 버퍼에 모아서 보내는 것 필요
     //    이러한 최적화는 server core에서도 할수 있으나 게임 컨텐츠단에서도 가능하다.
-    public void Send(byte[] sendBuff)
+    public void Send(ArraySegment<byte> sendBuff)
     {
         lock (_lock)
         {
@@ -79,8 +81,8 @@ public abstract class Session
         
         while (_sendQueue.Count > 0)
         {
-            byte[] buff = _sendQueue.Dequeue();
-            _pendingList.Add(new ArraySegment<byte>(buff, 0, buff.Length));
+            ArraySegment<byte> buff = _sendQueue.Dequeue();
+            _pendingList.Add(buff);
         }
         _sendArgs.BufferList = _pendingList;
         
