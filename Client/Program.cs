@@ -21,15 +21,27 @@ while (true)
     
 }
 
+class Packet
+{
+    public ushort size;
+    public ushort id;
+}
+
 class GameSession : Session
 {
     public override void OnConnected(EndPoint endPoint)
     {
         Console.WriteLine($"OnConnected : {endPoint}");
+        Packet packet = new Packet { size = 4, id = 7 };
         
         for (int i = 0; i < 5; i++)
         {
-            byte[] sendBuff = Encoding.UTF8.GetBytes($"hello world {i}");
+            var openSegment = SendBufferHelper.Open(4096);
+            byte[] buff1 = BitConverter.GetBytes(packet.size);
+            byte[] buff2 = BitConverter.GetBytes(packet.id);
+            Array.Copy(buff1, 0, openSegment.Array, openSegment.Offset, buff1.Length);
+            Array.Copy(buff2, 0, openSegment.Array, openSegment.Offset+ buff1.Length, buff2.Length);
+            var sendBuff = SendBufferHelper.Close(packet.size);
             Send(sendBuff);    
         }
     }

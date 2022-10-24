@@ -14,39 +14,39 @@ while (true)
     ;
 }
 
-class Knight
+class Packet
 {
-    public int hp;
-    public int attack;
+    public ushort size;
+    public ushort id;
 }
 
-class GameSession : Session
+class GameSession : PacketSession
 {
     public override void OnConnected(EndPoint endPoint)
     {
         Console.WriteLine($"OnConnected : {endPoint}");
 
-        Knight knight = new Knight { hp = 100, attack = 10 };
-        
-        var openSegment = SendBufferHelper.Open(4096);
-        byte[] buff1 = BitConverter.GetBytes(knight.hp);
-        byte[] buff2 = BitConverter.GetBytes(knight.attack);
-        Array.Copy(buff1, 0, openSegment.Array, openSegment.Offset, buff1.Length);
-        Array.Copy(buff2, 0, openSegment.Array, openSegment.Offset+ buff1.Length, buff2.Length);
-        
-        var sendBuff = SendBufferHelper.Close(buff1.Length + buff2.Length);
-        Send(sendBuff);
+        // Packet packet = new Packet { size = 100, id = 10 };
+        //
+        // var openSegment = SendBufferHelper.Open(4096);
+        // byte[] buff1 = BitConverter.GetBytes(packet.size);
+        // byte[] buff2 = BitConverter.GetBytes(packet.id);
+        // Array.Copy(buff1, 0, openSegment.Array, openSegment.Offset, buff1.Length);
+        // Array.Copy(buff2, 0, openSegment.Array, openSegment.Offset+ buff1.Length, buff2.Length);
+        // var sendBuff = SendBufferHelper.Close(buff1.Length + buff2.Length);
+        // Send(sendBuff);
         
         Thread.Sleep(1000);
         Disconnect();
     }
     
-    public override int OnRecv(ArraySegment<byte> buffer)
+    public override void OnRecvPacket(ArraySegment<byte> buffer)
     {
-        string recvData = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
-        Console.WriteLine($"[From Client] {recvData}");
+        ushort size = BitConverter.ToUInt16(buffer.Array, buffer.Offset);
+        ushort id = BitConverter.ToUInt16(buffer.Array, buffer.Offset + 2);
 
-        return buffer.Count;
+        Console.WriteLine($"RecvPacket {size} {id}");
+
     }
 
     public override void OnSend(int numOfBytes)
