@@ -1,26 +1,28 @@
-﻿namespace Server;
+﻿using ServerCore;
 
-public class GameRoom
+namespace Server;
+
+public class GameRoom : IJobQueue
 {
     private List<ClientSession> _sessions = new List<ClientSession>();
 
-    private object _lock = new object();
+    private JobQueue _jobQueue = new JobQueue();
+    
 
+    public void Push(Action job)
+    {
+        _jobQueue.Push(job);    
+    }
+    
     public void Enter(ClientSession session)
     {
-        lock (_lock)
-        {
-            _sessions.Add(session);
-            session.Room = this;    
-        }
+        _sessions.Add(session);
+        session.Room = this;
     }
 
     public void Leave(ClientSession session)
     {
-        lock (_lock)
-        {
-            _sessions.Remove(session);
-        }
+        _sessions.Remove(session);
     }
 
     public void Broadcast(ClientSession session, string chat)
@@ -31,12 +33,9 @@ public class GameRoom
         
         ArraySegment<byte> segment = packet.Write();
 
-        lock (_lock)
+        foreach (var s in _sessions)
         {
-            foreach (var s in _sessions)
-            {
-                s.Send(segment);
-            }
+            s.Send(segment);
         }
     }
 }
