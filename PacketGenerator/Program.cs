@@ -61,7 +61,7 @@ void ParsePacket(XmlReader r)
 	genPackets += string.Format(PacketFormat.packetFormat, packetName, t.Item1, t.Item2, t.Item3);
 	packetEnums += string.Format(PacketFormat.packetEnumFormat, packetName, ++packetId) + Environment.NewLine + "\t";
 	
-	if (packetName.StartsWith("S_") || packetName.StartsWith("s_"))
+	if (packetName.StartsWith("S2C"))
 		clientRegister += string.Format(PacketFormat.managerRegisterFormat, packetName) + Environment.NewLine;
 	else
 		serverRegister += string.Format(PacketFormat.managerRegisterFormat, packetName) + Environment.NewLine;

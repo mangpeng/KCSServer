@@ -5,15 +5,13 @@ using System.Collections.Generic;
 class PacketManager
 {
 	#region Singleton
-	static PacketManager _instance;
-	public static PacketManager Instance
+	private static PacketManager _instance = new PacketManager();
+	public static PacketManager Instance => _instance;
+	#endregion
+
+	public PacketManager()
 	{
-		get
-		{
-			if (_instance == null)
-				_instance = new PacketManager();
-			return _instance;
-		}
+		Register();
 	}
 	#endregion
 
@@ -22,8 +20,8 @@ class PacketManager
 		
 	public void Register()
 	{
-		_onRecv.Add((ushort)PacketID.C_PlayerInfoReq, MakePacket<C_PlayerInfoReq>);
-		_handler.Add((ushort)PacketID.C_PlayerInfoReq, PacketHandler.C_PlayerInfoReqHandler);
+		_onRecv.Add((ushort)PacketID.C2S_Chat, MakePacket<C2S_Chat>);
+		_handler.Add((ushort)PacketID.C2S_Chat, PacketHandler.C2S_ChatHandler);
 
 	}
 

@@ -53,7 +53,16 @@ public abstract class Session
     public abstract int OnRecv(ArraySegment<byte> buffer);
     public abstract void OnSend(int numOfBytes);
     public abstract void OnDisconnected(EndPoint endPoint);
-    
+
+
+    void Clear()
+    {
+        lock (_lock)
+        {
+            _sendQueue.Clear();
+            _pendingList.Clear();
+        }
+    }
     
     public void Start(Socket socket)
     {
@@ -97,12 +106,17 @@ public abstract class Session
         
         _socket.Shutdown(SocketShutdown.Both);
         _socket.Close();
+        Clear();
     }
 
     #region 네트워크 통신
 
     void RegisterSend()
     {
+        // thread-unsafe
+        if (_disconnected == 1)
+            return;
+        
         // BufferList, SetBuffer 둘다 세팅하면 에러남
         // byte[] buff = _sendQueue.Dequeue();
         //_sendArgs.SetBuffer(buff, 0, buff.Length);
@@ -113,11 +127,19 @@ public abstract class Session
             _pendingList.Add(buff);
         }
         _sendArgs.BufferList = _pendingList;
-        
-        bool pending = _socket.SendAsync(_sendArgs);
-        if (pending == false)
+
+        try
         {
-            OnSendCompleted(null, _sendArgs);
+            bool pending = _socket.SendAsync(_sendArgs);
+            if (pending == false)
+            {
+                OnSendCompleted(null, _sendArgs);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"SendAsync : {e}");
+            throw;
         }
     }
 
@@ -156,14 +178,25 @@ public abstract class Session
 
     void RegisterRecv()
     {
+        if (_disconnected == 1)
+            return;
+        
         _recvBuffer.Clean();
         var segment = _recvBuffer.WriteSegment;
         _recvArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
-        
-        bool pending = _socket.ReceiveAsync(_recvArgs);
-        if (pending == false)
+
+        try
         {
-            OnRecvCompleted(null, _recvArgs);
+            bool pending = _socket.ReceiveAsync(_recvArgs);
+            if (pending == false)
+            {
+                OnRecvCompleted(null, _recvArgs);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"ReceiveAsync : {e}");
+            throw;
         }
     }
     
