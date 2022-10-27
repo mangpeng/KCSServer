@@ -11,6 +11,7 @@ public abstract class PacketSession : Session
     public sealed override int OnRecv(ArraySegment<byte> buffer)
     {
         int processLen = 0;
+        int packetCount = 0;
 
         while (true)
         {
@@ -22,9 +23,15 @@ public abstract class PacketSession : Session
                 break;
             
             OnRecvPacket(new ArraySegment<byte>(buffer.Array, buffer.Offset, dataSize));
+            ++packetCount;
 
             processLen += dataSize;
             buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset + dataSize, buffer.Count - dataSize);
+        }
+
+        if (packetCount > 1)
+        {
+            Console.WriteLine($"패킷 모아받기 : {packetCount}");
         }
         
         return processLen;
@@ -39,7 +46,7 @@ public abstract class Session
     private Socket _socket;
     private int _disconnected = 0;
 
-    private RecvBuffer _recvBuffer = new RecvBuffer(1024);
+    private RecvBuffer _recvBuffer = new RecvBuffer(65535);
 
     private object _lock = new object();
     private Queue<ArraySegment<byte>> _sendQueue = new Queue<ArraySegment<byte>>();
@@ -87,6 +94,26 @@ public abstract class Session
         lock (_lock)
         {
             _sendQueue.Enqueue(sendBuff);
+            if (_pendingList.Count == 0)
+            {
+                RegisterSend();
+            }
+        }
+    }
+    
+    public void Send(List<ArraySegment<byte>> sendBuffList)
+    {
+        // _sendArgs.BufferList 에 크기가 0이면 크래쉬 나므로
+        if (sendBuffList.Count == 0)
+            return;
+        
+        lock (_lock)
+        {
+            foreach (var s in sendBuffList)
+            {
+                _sendQueue.Enqueue(s);    
+            }
+            
             if (_pendingList.Count == 0)
             {
                 RegisterSend();

@@ -9,6 +9,6 @@ class PacketHandler
         S2C_Chat chatPacket = packet as S2C_Chat;
         ServerSession serverSession = session as ServerSession;
         
-        Console.WriteLine(chatPacket.chat);
+        // Console.WriteLine(chatPacket.chat);
     }
 }

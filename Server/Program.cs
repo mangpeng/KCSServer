@@ -19,7 +19,8 @@ public partial class Program
     
         while (true)
         {
-            ;
+            Room.Push(()=>Room.Flush());
+            Thread.Sleep(250);
         }    
     }
 }
