@@ -7,12 +7,12 @@ using ServerCore;
 // IPHostEntry ipHost = Dns.GetHostEntry(host);
 // IPAddress ipAddr = ipHost.AddressList[0];
 IPAddress ipAddr = IPAddress.Parse("127.0.0.1");
-IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
+IPEndPoint endPoint = new IPEndPoint(ipAddr, 1234);
 
 Connector connector = new Connector();
 connector.Connect(endPoint, 
     () => SessionManager.Instance.Generate(),
-    100);
+    10);
 
 while (true)
 {

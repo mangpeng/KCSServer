@@ -9,7 +9,7 @@ public partial class Program
     static public GameRoom Room = new GameRoom();
     
     static public IPAddress ipAddr = IPAddress.Parse("127.0.0.1");
-    static public IPEndPoint endPoint = new IPEndPoint(ipAddr, 7777);
+    static public IPEndPoint endPoint = new IPEndPoint(ipAddr, 1234);
 
     static void FlushRoom()
     {
